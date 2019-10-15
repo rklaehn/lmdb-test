@@ -1,0 +1,15 @@
+[package]
+name = "lmdb-test"
+version = "0.1.0"
+authors = ["Rüdiger Klaehn <rklaehn@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lmdb = "0.8.0"
+reqwest = { version = "0.9.22" }
+serde = "1.0.101"
+warp = "0.1.20"
+structopt = "0.3.3"
+tokio = "0.1.22"
