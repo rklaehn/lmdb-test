@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use warp::filters::query::query;
 use warp::Filter;
+use crate::ipfs_block_get;
 
 #[derive(Deserialize, Debug)]
 struct PutArg {
@@ -31,16 +32,18 @@ impl BlockStore {
         let key_bytes = key.as_bytes();
         let txn = self.env.begin_ro_txn()?;
         let mut cursor = txn.open_ro_cursor(self.db)?;
-        println!("getting {}", key);
-        if let Some((key, bytes)) = cursor.iter_from(key).next() {
-            if key == key_bytes {
-                Ok(bytes.to_vec())
-            } else {
-                Ok("not found".as_bytes().to_vec())
+        if let Some((found_key, bytes)) = cursor.iter_from(key_bytes).next() {
+            if found_key == key_bytes {
+                // println!("cache hit {}", key);
+                return Ok(bytes.to_vec())
             }
-        } else {
-            Ok("not found".as_bytes().to_vec())
         }
+        println!("cache miss {}", key);
+        let value = ipfs_block_get(key)?;
+        // let mut txn = self.env.begin_rw_txn()?;
+        // txn.put(self.db, &key_bytes, &value, lmdb::WriteFlags::empty())?;
+        // txn.commit()?;
+        Ok(value)
     }
 }
 
@@ -49,7 +52,7 @@ pub fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let block_get = path!("api" / "v0" / "block" / "get")
         .and(query())
         .map(move |arg: PutArg| {
-            println!("{:?}", arg);
+            // println!("{:?}", arg);
             match store.as_ref().get(arg.cid.as_str()) {
                 Ok(data) => data,
                 Err(cause) => format!("Kaput {}", cause).as_bytes().to_vec(),

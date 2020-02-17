@@ -46,6 +46,14 @@ struct PinLsResponse {
     keys: PinMap,
 }
 
+pub fn ipfs_block_get(key: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let url = format!("http://localhost:5001/api/v0/block/get?arg={}", key);
+    let mut data = reqwest::get(url.as_str())?;
+    let mut value: Vec<u8> = Vec::new();
+    data.copy_to(&mut value)?;
+    Ok(value)
+}
+
 fn slurp() -> Result<(), Box<dyn std::error::Error>> {
     let env = lmdb::Environment::new()
         .set_max_dbs(1)
@@ -55,12 +63,9 @@ fn slurp() -> Result<(), Box<dyn std::error::Error>> {
     let mut result = reqwest::get("http://localhost:5001/api/v0/pin/ls")?;
     let x: PinLsResponse = result.json()?;
     for key in x.keys.keys() {
-        let url = format!("http://localhost:5001/api/v0/block/get?arg={}", key);
-        println!("{}", key);
-        let mut data = reqwest::get(url.as_str())?;
+        println!("key {}", key);
+        let value = ipfs_block_get(key)?;
         let key = key.clone().into_bytes();
-        let mut value: Vec<u8> = Vec::new();
-        data.copy_to(&mut value)?;
         let mut txn = env.begin_rw_txn()?;
         txn.put(db, &key, &value, lmdb::WriteFlags::empty())?;
         txn.commit()?;
